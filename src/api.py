@@ -33,7 +33,7 @@ async def scrape_job(
                 url=payload.job_url,
                 wait_until="domcontentloaded",
             )
-            job_data = await job_scraper.extract(page)
+            job_data = await job_scraper.scrape(page)
         finally:
             await browser.close()
 

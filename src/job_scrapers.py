@@ -2,6 +2,9 @@ from abc import ABC, abstractmethod
 from typing import Any
 from urllib.parse import urlparse
 
+from playwright.async_api import Page
+
+
 class JobScraper(ABC):
     @abstractmethod
     async def scrape(self, page) -> dict[str, Any]:
@@ -9,7 +12,7 @@ class JobScraper(ABC):
 
 
 class SeekJobScraper(JobScraper):
-    async def scrape(self, page) -> dict[str, Any]:
+    async def scrape(self, page: Page) -> dict[str, Any]:
         title = await page.locator('h1[data-automation="job-detail-title"]').inner_text()
         company = await page.locator('span[data-automation="advertiser-name"]').inner_text()
         location = await page.locator('span[data-automation="job-detail-location"]').inner_text()
