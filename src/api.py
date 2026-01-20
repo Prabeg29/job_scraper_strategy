@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from fastapi import APIRouter, Depends, status
+from playwright.async_api import async_playwright
 
 from .deps import get_job_registry
 from .job_scrapers import ScraperRegistry
