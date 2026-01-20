@@ -5,6 +5,7 @@ from playwright.async_api import async_playwright
 
 from .deps import get_job_registry
 from .job_scrapers import ScraperRegistry
+from .settings import settings
 
 
 job_scrape_router = APIRouter(prefix="/jobs", tags=["Jobs"])
@@ -23,7 +24,7 @@ async def scrape_job(
     job_scraper = scraper_registry.resolve(payload.job_url)
     async with async_playwright() as p:
         browser = await p.firefox.connect(
-            ws_endpoint="ws://browserless:3000/firefox/playwright?headless=true"
+            ws_endpoint=settings.browerless_ws,
         )
         try:
             page = await browser.new_page()
