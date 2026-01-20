@@ -1,0 +1,7 @@
+.venv
+.env
+.env.example
+.git
+.gitignore
+README.md
+.python-version
