@@ -1,0 +1,44 @@
+networks:
+  job_scraper:
+    driver: bridge
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        - UID=${UID:-1000}
+        - GID=${GID:-1000}
+    container_name: job_scraper.api
+    env_file:
+      - .env
+    volumes:
+      - ./src:/opt/app/src
+    ports:
+      - 8848:8848
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8848 --reload
+    networks:
+      - job_scraper
+
+
+  browserless:
+    image: ghcr.io/browserless/firefox
+    container_name: job_scraper.browserless
+    depends_on:
+      - api
+    environment:
+      - CONCURRENT=3
+      - QUEUED=3
+      - TIMEOUT=100000
+    ports:
+      - 3000:3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/pressure"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - job_scraper
