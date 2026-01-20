@@ -95,3 +95,7 @@ $ curl -X POST \
     "job_url": "https://www.seek.com.au/job/89795419"
   }'
 ```
+
+## License
+
+MIT - Use freely, modify as needed.
