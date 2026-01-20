@@ -4,4 +4,4 @@ from .job_scrapers import JobScraper
 
 
 def get_job_registry(request: Request) -> JobScraper:
-    return request.app.state.job_registry
+    return request.app.state.scraper_registry
