@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-
+from .api import job_scrape_router
 from .job_scrapers import ScraperRegistry, SeekJobScraper
 
 
@@ -16,3 +16,5 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+app.include_router(job_scrape_router)
