@@ -10,7 +10,7 @@ from tenacity import (
     retry,
     retry_if_exception_type,
     stop_after_attempt,
-    wait_exponential,
+    wait_random_exponential,
 )
 
 from .logger import logger
@@ -27,7 +27,8 @@ class SeekJobScraper(JobScraper):
         before_sleep=before_sleep_log(logger=logger, log_level=logging.ERROR),
         retry=retry_if_exception_type(TimeoutError),
         stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10)
+        wait=wait_random_exponential(multiplier=1, min=2, max=10),
+        reraise=True
     )
     async def scrape(self, page: Page) -> dict[str, Any]:
         title = await page.locator('h1[data-automation="job-detail-title"]').inner_text()
