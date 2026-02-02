@@ -11,7 +11,7 @@ from .logger import REQUEST_ID_CTX, logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    ScraperRegistry.register("seek.com", SeekJobScraper)
+    ScraperRegistry.register("seek.com.au", SeekJobScraper)
 
     app.state.scraper_registry = ScraperRegistry
 
@@ -35,7 +35,6 @@ async def add_request_id(request: Request, call_next):
     logger.info(
         "HTTP Request",
         extra={
-            "request_id": req_id,
             "method": request.method,
             "path": request.url.path,
             "status_code": response.status_code,
