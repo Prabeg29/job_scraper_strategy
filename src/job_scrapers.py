@@ -24,7 +24,7 @@ class JobScraper(ABC):
 
 class SeekJobScraper(JobScraper):
     @retry(
-        before_sleep=before_sleep_log(logger=logger, log_level=logging.ERROR),
+        before_sleep=before_sleep_log(logger=logger, log_level=logging.WARNING,),
         retry=retry_if_exception_type(TimeoutError),
         stop=stop_after_attempt(3),
         wait=wait_random_exponential(multiplier=1, min=2, max=10),
@@ -54,13 +54,14 @@ class ScraperRegistry:
     @classmethod
     def resolve(cls, domain: str) -> JobScraper:
         parsed_domain = urlparse(domain)
-        hostname = parsed_domain.netloc
+        hostname = parsed_domain.netloc.replace("www.", "")
 
         if not hostname:
             raise ValueError("URL has no valid hostname")
+        
+        scraper = cls._registry.get(hostname)
 
-        for key, scraper_class in cls._registry.items():
-            if key in hostname:
-                return scraper_class()
+        if not scraper:
+            raise ValueError(f"No registered scraper for domain: {domain}")
 
-        raise ValueError(f"No registered scraper for domain: {domain}")
+        return scraper()
