@@ -22,6 +22,7 @@ async def scrape_job(
     scraper_registry: ScraperRegistry = Depends(get_job_registry),
 ):
     job_scraper = scraper_registry.resolve(payload.job_url)
+
     async with async_playwright() as p:
         browser = await p.firefox.connect(
             ws_endpoint=settings.browerless_ws,
