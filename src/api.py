@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from playwright.async_api import async_playwright
 
 from .deps import get_job_registry
 from .job_scrapers import ScraperRegistry
+from .logger import logger
 from .settings import settings
 
 
@@ -22,6 +23,7 @@ async def scrape_job(
     scraper_registry: ScraperRegistry = Depends(get_job_registry),
 ):
     job_scraper = scraper_registry.resolve(payload.job_url)
+    normalized_url = job_scraper.normalize(url=payload.job_url)
 
     async with async_playwright() as p:
         browser = await p.firefox.connect(
@@ -31,9 +33,23 @@ async def scrape_job(
             page = await browser.new_page()
         
             await page.route("**/*.{png,jpg,jpeg,gif,css,woff2}", lambda route: route.abort())
-            await page.goto(
-                url=payload.job_url,
+            resp = await page.goto(
+                url=normalized_url,
                 wait_until="domcontentloaded",
+            )
+            
+            if resp and resp.status == status.HTTP_404_NOT_FOUND:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No job found for given url",
+                )
+
+            logger.info(
+                "Scraping job details",
+                extra={
+                    "raw_job_url": payload.job_url,
+                    "normalized_job_url": normalized_url,
+                }
             )
             job_data = await job_scraper.scrape(page)
         finally:
