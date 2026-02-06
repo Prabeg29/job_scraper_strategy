@@ -2,7 +2,7 @@ import logging
 import re
 
 from abc import ABC, abstractmethod
-from typing import Any, override
+from typing import Any, Set, override
 from urllib.parse import (
     parse_qs,
     parse_qsl,
@@ -24,20 +24,12 @@ from .logger import logger
 
 
 class JobScraper(ABC):
-    def normalize(self, url: str) -> str:
-        NOISE_PARAMS = {
-            "breadcrumbs",
-            "fbclid",
-            "gclid",
-            "ref",
-            "session_id",
-            "utm_campaign",
-            "utm_content",
-            "utm_medium",
-            "utm_source",
-            "utm_term",
-        }
+    @property
+    @abstractmethod
+    def _allowed_query_params(self) -> Set[str]:
+        pass
 
+    def normalize(self, url: str) -> str:
         parsed_url = urlparse(url.strip())
 
         scheme = parsed_url.scheme.lower()
@@ -54,7 +46,7 @@ class JobScraper(ABC):
         query_params = [
             (k, v)
             for k, v in parse_qsl(parsed_url.query)
-            if k.lower() not in NOISE_PARAMS
+            if k.lower() in self._allowed_query_params
         ]
 
         query_params.sort()
@@ -69,6 +61,13 @@ class JobScraper(ABC):
 
 class SeekJobScraper(JobScraper):
     JOB_PATH_PATTERN = re.compile(r"^/job/(\d+)$")
+
+    @property
+    def _allowed_query_params(self) -> Set[str]:
+        return {
+            "daterange",
+            "page",
+        }
 
     @override
     def normalize(self, url: str) -> str:
