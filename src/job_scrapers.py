@@ -76,17 +76,15 @@ class SeekJobScraper(JobScraper):
         parsed_url = urlparse(super().normalize(url=url))
         query_params = parse_qs(parsed_url.query)
 
-        job_id = query_params.get("jobId", None)
-
         if match := self.JOB_PATH_PATTERN.search(parsed_url.path):
             job_id = match.group(1)
         elif "jobId" in query_params:
             job_id = query_params["jobId"][0]
         
-        if job_id:
-            return f"https://www.seek.com.au/job/{job_id}"
-
-        return urlunparse(parsed_url)
+        if job_id is None:
+            raise ValueError("The seek job url has no job selected")
+            
+        return f"https://www.seek.com.au/job/{job_id}"
 
     @retry(
         before_sleep=before_sleep_log(logger=logger, log_level=logging.WARNING,),
