@@ -3,7 +3,7 @@ networks:
     driver: bridge
 
 services:
-  api:
+  base:
     build:
       context: .
       dockerfile: Dockerfile
@@ -11,23 +11,13 @@ services:
       args:
         - UID=${UID:-1000}
         - GID=${GID:-1000}
-    container_name: job_scraper.api
-    env_file:
-      - .env
-    volumes:
-      - ./src:/opt/app/src
-    ports:
-      - 8848:8848
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8848 --reload
-    networks:
-      - job_scraper
+    image: job_scraper/base
+    profiles: ["build-only"]
 
 
   browserless:
     image: ghcr.io/browserless/firefox
     container_name: job_scraper.browserless
-    depends_on:
-      - api
     environment:
       - CONCURRENT=3
       - QUEUED=3
@@ -40,5 +30,100 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - job_scraper
+
+
+  db:
+    image: postgres:18-alpine
+    container_name: job_scraper.db
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_DB: ${DB_DATABASE}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    ports:
+      - 5430:5432
+    volumes:
+      - ./db_data:/var/lib/postgresql
+      - ./docker/postgres:/docker-entrypoint-initdb.d
+    networks:
+      - job_scraper
+
+
+  db_client:
+    image: adminer
+    container_name: job_scraper.db_client
+    restart: always
+    ports:
+      - 8080:8080
+    networks:
+      - job_scraper
+
+  
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: job_scraper.pgbouncer
+    ports:
+      - 5431:5342
+    depends_on:
+      - db
+    environment:
+      - DB_USER=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=db
+      - DB_NAME=${DB_DATABASE}
+      - AUTH_TYPE=scram-sha-256
+      - POOL_MODE=transaction
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-h', 'localhost']
+    networks:
+      - job_scraper
+
+
+  redis:
+    image: redis:8-alpine
+    container_name: job_scraper.redis
+    ports:
+      - 6379:6379
+    networks:
+      - job_scraper
+
+
+  api:
+    image: job_scraper/base
+    container_name: job_scraper.api
+    depends_on:
+      - pgbouncer
+      - redis
+    env_file:
+      - .env
+    volumes:
+      - ./src:/opt/app/src
+    ports:
+      - 8848:8848
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8848 --reload
+    networks:
+      - job_scraper
+
+
+  worker:
+    image: job_scraper/base
+    depends_on:
+      - pgbouncer
+      - redis
+      - browserless
+    env_file:
+      - .env
+    volumes:
+      - ./src:/opt/app/src
+    deploy:
+      replicas: 3
+    command: rq worker default --with-scheduler
     networks:
       - job_scraper
