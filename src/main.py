@@ -6,11 +6,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 
 from .api import job_scrape_router
+from .database import init_db
 from .job_scrapers import ScraperRegistry, SeekJobScraper
 from .logger import REQUEST_ID_CTX, logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Initializing Database...")
+    await init_db()
+    logger.info("Database initialization completed")    
+
     ScraperRegistry.register("seek.com.au", SeekJobScraper)
 
     app.state.scraper_registry = ScraperRegistry
