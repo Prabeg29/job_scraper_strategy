@@ -67,6 +67,7 @@ class SeekJobScraper(JobScraper):
         return {
             "daterange",
             "page",
+            "jobid", # jobid instead of jobId to support the lowercasing check
         }
 
     @override

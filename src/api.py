@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, status
 from .deps import get_db_connection, get_job_registry
 from .job_scrapers import ScraperRegistry
 from .logger import logger
+from .settings import settings
 from .task import scrape_job_details
 from .utils import hash_url
 
@@ -27,6 +28,9 @@ async def scrape_job(
     job_scraper = scraper_registry.resolve(payload.job_url)
     normalized_url = job_scraper.normalize(url=payload.job_url)
     url_hash = hash_url(normalized_url=normalized_url)
+
+    if settings.redis_conn.get(f"scrape:{url_hash}"):
+        return { "message": "Request has been forwarded"}
     
     async with db_conn.cursor() as cur:
         await cur.execute(
@@ -62,6 +66,7 @@ async def scrape_job(
             }
         )
 
+        settings.redis_conn.set(f"scrape:{url_hash}", "1", ex=86400)
         scrape_job_details.delay( # type: ignore
             job_scraper,
             normalized_url,

@@ -15,7 +15,11 @@ async def init_db():
     INIT_DB_QUERIES = [
         sql.SQL(
             """
-                CREATE TYPE scraping_status AS ENUM('queued', 'scraping', 'scraped', 'failed');
+                DO $$ BEGIN
+                    CREATE TYPE scraping_status AS ENUM('queued', 'scraping', 'scraped', 'failed');
+                EXCEPTION
+                    WHEN duplicate_object THEN null;
+                END $$;
             """
         ),
         sql.SQL(
