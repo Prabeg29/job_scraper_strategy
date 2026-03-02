@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import status
 from playwright.async_api import async_playwright
 from psycopg.types.json import Json
@@ -19,6 +21,12 @@ async def scrape_job_details(
     normalized_url: str,
     url_hash: str,
 ):
+    lock_key = f"lock:scrape:{url_hash}"
+    lock_token = str(uuid.uuid4())
+
+    if not settings.redis_conn.set(lock_key, lock_token, nx=True, ex=300):
+        return
+    
     async with db_conn() as aconn:
         await aconn.execute(
             query="""
@@ -98,3 +106,6 @@ async def scrape_job_details(
             raise
         finally:
             await browser.close()
+            
+            if settings.redis_conn.get(lock_key) == lock_token:
+                settings.redis_conn.delete(lock_key)
